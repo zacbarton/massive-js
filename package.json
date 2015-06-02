@@ -31,7 +31,8 @@
     "commander": "^2.6.0",
     "glob": "^4.4.1",
     "pg": "^4.3.0",
-    "underscore": "^1.8.2"
+    "underscore": "^1.8.2",
+    "isuuid": "^0.1.0"
   },
   "devDependencies": {
     "mocha": "^2.1.0",
