@@ -1,5 +1,5 @@
 var massive = require("../../index");
-var connectionString = "postgres://rob:password@localhost/massive";
+var connectionString = "postgres://postgres:postgres@localhost/massive";
 var assert = require("assert");
 var path = require("path");
 var scriptsDir = path.join(__dirname, "..", "db");
@@ -7,7 +7,7 @@ var scriptsDir = path.join(__dirname, "..", "db");
 
 exports.init = function(next){
   massive.connect({
-    connectionString : connectionString, 
+    connectionString : connectionString,
     scripts : scriptsDir}, next);
 };
 
@@ -42,4 +42,3 @@ var doc3 = {
   is_good : false,
   created_at : new Date()
 };
-

@@ -22,10 +22,52 @@ describe('Tables -Add/Edit/Delete', function () {
         done();
       });
     });
-    it('updates a product ', function (done) {
-      db.products.save({id : 4, name : "Fender Stratocaster", description : "Leo Fender's baby", price : 1200}, function(err, res){
+    it('updates a product', function (done) {
+      var product = {id : 4, name : "Fender Stratocaster", description : "Leo Fender's baby", price : 1200, tags: ['1', '2']};
+      db.products.save(product, function(err, res){
         // Update returns an array - Iassume because more than one item can be updated...
+        assert.equal(product.id, 4);  // should not clobber the original object
         assert.equal(res[0].name, "Fender Stratocaster");
+        done();
+      });
+    });
+    it('updates multiple products', function (done) {
+      db.products.update({in_stock: true}, {in_stock: false}, function(err, res) {
+        assert.equal(res.length, 2);
+        assert.equal(res[0].id, 1);
+        assert.equal(res[0].in_stock, false);
+        assert.equal(res[1].id, 2);
+        assert.equal(res[1].in_stock, false);
+        done();
+      });
+    });
+    it('updates all products', function (done) {
+      db.products.update({}, {price: 1.23}, function(err, res) {
+        assert.equal(res.length, 4);
+        assert.equal(res[0].price, 1.23);
+        assert.equal(res[1].price, 1.23);
+        assert.equal(res[2].price, 1.23);
+        assert.equal(res[3].price, 1.23);
+        done();
+      });
+    });
+    it('updates multiple products with an IN list', function (done) {
+      db.products.update({id: [1, 2]}, {price: 123.45}, function(err, res) {
+        assert.equal(res.length, 2);
+        assert.equal(res[0].id, 1);
+        assert.equal(res[0].price, 123.45);
+        assert.equal(res[1].id, 2);
+        assert.equal(res[1].price, 123.45);
+        done();
+      });
+    });
+    it('updates multiple products with a NOT IN list', function (done) {
+      db.products.update({'id !=': [1, 2]}, {price: 543.21}, function(err, res) {
+        assert.equal(res.length, 2);
+        assert.equal(res[0].id, 3);
+        assert.equal(res[0].price, 543.21);
+        assert.equal(res[1].id, 4);
+        assert.equal(res[1].price, 543.21);
         done();
       });
     });
@@ -33,7 +75,16 @@ describe('Tables -Add/Edit/Delete', function () {
       db.products.destroy({id : 4}, function(err, deleted){
         var remaining = db.products.find(4, function(err, found) { 
           //Deleted returns an array...
-          assert(found == undefined && deleted[0].id == 4);
+          assert(found === undefined && deleted[0].id === 4);
+          done();
+        });
+      });
+    });
+    it('deletes all products', function (done) {
+      db.products.destroy({}, function(err, deleted){
+        var remaining = db.products.find({}, function(err, found) { 
+          assert.equal(deleted.length, 3);
+          assert.equal(found.length, 0);
           done();
         });
       });
@@ -59,8 +110,48 @@ describe('Tables -Add/Edit/Delete', function () {
       db.Users.destroy({Id : 2}, function(err, deleted){
         var remaining = db.Users.find(2, function(err, found) { 
           //Deleted returns an array...
-          assert(found == undefined && deleted[0].Id == 2);
+          assert(found === undefined && deleted[0].Id == 2);
           done();
+        });
+      });
+    });
+  });
+
+  describe('Add/Update/Delete records with UUID keys:', function() {
+    it('adds an order', function (done) {
+      db.orders.save({product_id: 1, user_id: 1, notes: 'hi'}, function(err, res) {
+        assert.ok(res.id !== null);
+        assert.equal(res.product_id, 1);
+        assert.equal(res.user_id, 1);
+        assert.equal(res.notes, 'hi');
+        done();
+      });
+    });
+
+    it('updates an order', function (done) {
+      db.orders.findOne({}, function(err, found) { 
+        if (err) { throw err; }
+        
+        found.notes = 'hello';
+
+        db.orders.save(found, function(err, res) {
+          assert.equal(res.length, 1);
+          assert.equal(res[0].notes, 'hello');
+          done();
+        });
+      });
+    });
+
+    it('deletes an order', function (done) {
+      db.orders.findOne({}, function(err, found) { 
+        if (err) { throw err; }
+
+        db.orders.destroy({id : found.id}, function(err, deleted) {
+          db.orders.findOne({id : found.id}, function(err, remaining) { 
+            assert.equal(deleted[0].id, found.id);
+            assert.ok(remaining === undefined);
+            done();
+          });
         });
       });
     });
@@ -140,14 +231,34 @@ describe('Tables', function () {
   });
   describe('Simple queries with count', function () {
     it('returns 2 for OR id 1 or 2', function (done) {
-      db.products.count("id=$1 OR id=$2", [1,2],function(err,res){
+      db.products.count("id=$1 OR id=$2", [1,2], function(err,res){
         assert.equal(res,2);
         done();
       });
     });
     it('returns 1 for id 1', function (done) {
-      db.products.count("id=$1", [1],function(err,res){
+      db.products.count("id=$1", [1], function(err,res){
         assert.equal(res, 1);
+        done();
+      });
+    });
+  });
+  describe('More abstracted queries using findArgs in count', function () {
+    it('returns 2 for OR id 1 or 2', function (done) {
+      db.products.count({id: [1, 2]}, function(err,res){
+        assert.equal(res,2);
+        done();
+      });
+    });
+    it('returns 1 for id 1', function (done) {
+      db.products.count({id: 1}, function(err,res){
+        assert.equal(res, 1);
+        done();
+      });
+    });
+    it('returns 3 for everything', function (done) {
+      db.products.count({}, function(err,res){
+        assert.equal(res, 3);
         done();
       });
     });
@@ -174,6 +285,27 @@ describe('Tables', function () {
     it('returns product NOT IN 1 and 2', function (done) {
       db.products.find({"id <>" : [1,2]}, function(err,res){
         assert.equal(res[0].id, 3);
+        done();
+      });
+    });
+    it('returns products by finding a null field', function (done) {
+      db.products.find({"tags": null}, function(err,res){
+        assert.equal(res.length, 3);
+        assert.equal(res[0].id, 1);
+        done();
+      });
+    });
+    it('returns products by finding a non-null field', function (done) {
+      db.products.find({"id != ": null}, function(err,res){
+        assert.equal(res.length, 3);
+        assert.equal(res[0].id, 1);
+        done();
+      });
+    });
+    it('returns products with a compound query including a null field', function (done) {
+      db.products.find({"id": 1, "tags": null, price: 12.00}, function(err,res){
+        assert.equal(res.length, 1);
+        assert.equal(res[0].id, 1);
         done();
       });
     });
@@ -290,6 +422,58 @@ describe('Tables', function () {
     it('returns 1 Users for term "test"', function (done) {
       db.Users.search({columns : ["Name"], term: "test"},function(err,res){
         assert.equal(res.length,1);
+        done();
+      });
+    });
+  });
+
+  describe('Streaming Results', function () {
+    it('returns a readable stream', function (done) {
+      db.products.find({}, {stream: true}, function(err, stream) {
+        assert.ok(err === null);
+
+        var result = [];
+
+        stream.on('readable', function() {
+          var res = stream.read();
+
+          if (res) {
+            result.push(res);
+          }
+        });
+
+        stream.on('end', function () {
+          assert.equal(3, result.length);
+          done();
+        });
+      });
+    });
+  });
+
+  describe('insert', function () {
+    it('inserts a product', function (done) {
+      db.products.insert({name: "A Product"}, function (err, res) {
+        assert.equal(res.name, "A Product");
+
+        done();
+      });
+    });
+
+    it('inserts multiple products', function (done) {
+      db.products.insert([{name: "A Product"}, {name: "Another Product"}], function (err, res, res2) {
+        assert.equal(res.length, 2);
+        assert.equal(res[0].name, "A Product");
+        assert.equal(res[1].name, "Another Product");
+
+        done();
+      });
+    });
+
+    it('inserts array fields', function (done) {
+      db.products.insert({name: "A Product", tags: ['one', 'two']}, function (err, res) {
+        assert.equal(res.name, "A Product");
+        assert.deepEqual(res.tags, ['one', 'two']);
+
         done();
       });
     });

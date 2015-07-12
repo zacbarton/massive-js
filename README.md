@@ -38,26 +38,16 @@ var express = require("express");
 var app = express();
 var http = require('http');
 var massive = require("massive");
+var connectionString = "postgres://massive:password@localhost/chinook";
 
-var configure = function(done) {   
-  var connectionString = "postgres://massive:password@localhost/chinook";
+// connect to Massive and get the db instance. You can safely use the
+// convenience sync method here because its on app load
+// you can also use loadSync - it's an alias
+massive.connectSync({connectionString : connectionString}) {
 
-  // connect to Massive and get the db instance:
-  massive.connect({
-  connectionString : connectionString}, function(err, massiveInstance) { 
-
-    // Set a reference to the massive instance on Express' app:
-    app.set('db', massiveInstance);
-
-    // Let the caller know the db is ready...
-    done();
-  });
-};
-
-configure(function() { 
-  // Run it...
-  http.createServer(app).listen(8080);
-});
+// Set a reference to the massive instance on Express' app:
+app.set('db', massiveInstance);
+http.createServer(app).listen(8080);
 ```
 From there, accessing the db is just:
 
@@ -82,7 +72,7 @@ massive.connect({
 ```
 
 You can use arguments right in your SQL file as well. Just format your parameters in SQL
-using `$1`, `$2`, etc: 
+using `$1`, `$2`, etc:
 
 ```javascript
 var massive = require("massive");
@@ -275,6 +265,24 @@ db.users.save({email : "new@example.com"}, function(err,inserted){
 });
 ```
 
+## Streams
+
+To improve performance over large result sets, you might want to consider using a stream. This has the upside of returning reads right away, but the downside of leaving a connection open until you close it. To use a stream, just send in `{stream: true}` in the options:
+
+```js
+db.users.find({company_id : 12}, {stream:true}, function(err,stream){
+
+  stream.on('readable', function(){
+    var user = stream.read();
+    //do your thing
+  });
+
+  stream.on('end', function(){
+    //deal with results here
+  });
+});
+```
+
 ## Database Schema
 
 Massive understands the notion of database schemas and treats any Postgres schema other than `public` as a namespace. Objects bound to the `public` schema (the default in Postgres) are attached directly to the root db namespace. Schemas other than `public` will be represented by binding a namespace object to the root reflecting the name of the schema. To steal a previous example, let's say the `users` table was located in a back-end schema named `membership`. Massive will load up the database objects bound to the membership schema, and you can access them from code like so:
@@ -290,11 +298,19 @@ db.membership.users.find({active: true}, function(err,users){
 
 ```
 
-## SPROC is NOT a Four Letter Word
+## Synchronous Methods
+
+Just about every method in Massive has a synchronous counterpart using [the deasync library](https://github.com/vkurchatkin/deasync). These methods are here for convenience when you're not worried about I/O and just want to move some data around without a callback mess.
+
+```js
+var myUser = db.users.findOneSync({id : 1});
+```
+
+## We <3 Functions
 
 Got a ~~tightly-wound~~ super-concientous DBA who ~~micro-manages~~ carefully limits developer access to the back end store? Feel bold, adventurous, and [unconstrained by popular dogma](http://rob.conery.io/2015/02/21/its-time-to-get-over-that-stored-procedure-aversion-you-have/) about database functions/stored procedures? Unafraid to be called names by your less-enlightened friends?
 
-Massive treats Postgres functions ("sprocs") as first-class citizens. 
+Massive treats Postgres functions ("sprocs") as first-class citizens.
 
 Say your database schema introdcues a complex peice of logic in a Postgres function:
 
@@ -311,18 +327,26 @@ language sql;
 Massive will load up and attach the `all_products` function, and any other Postgres function as JS functions on the root massive namespace (or on an appropriate schema-based namespace, as we just saw), which you can then access directly as functions:
 
 ```javascript
-      db.all_products(function(err,res) {
-        // returns the result of the function (all the product records, in this case...)
-      });
+db.all_products(function(err,res) {
+  // returns the result of the function (all the product records, in this case...)
+});
 ```
 Obviously, this was a trivial example, but you get the idea. You can perform complex logic deep in your database, and massive will make it accessible directly. For a deeper dive on this, see [pg-auth](https://github.com/robconery/pg-auth), which basically [rolls common membership up into a box](http://rob.conery.io/2015/03/17/membership-in-a-box-with-pg-auth/) and tucks the auth pain away behind a pleasing facade of Postgres functions. Guaranteed to stir up spirited discussions with your friends and neighbors.
+
+If you're using a function that takes multiple parameters, you'll need to wrap your arguments in an array:
+
+```js
+db.myFunction(['thing1', 'thing2'], function(err,res){
+  //result is always an array
+})
+```
 
 ## REPL
 
 Massive has a REPL (Read Evaluate Print Loop - aka "console") and you can fire it up to play with your DB in the console:
 
 ```
-# connect to local server, database my_database 
+# connect to local server, database my_database
 bin massive -d my_database
 db >
 ```
@@ -374,4 +398,3 @@ If you want to contribute - I'd love it! Just open an issue to work against so y
 The code is rather hideous - I wrote it in a fit of inspiration and if you see things that could be done better, yay!
 
 If you see a bug, please be so kind as to show how it's failing, and I'll do my best to get it fixed quickly.
-

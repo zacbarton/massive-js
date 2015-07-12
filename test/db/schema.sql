@@ -1,6 +1,9 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 drop table if exists "Users";
 drop table if exists products cascade;
 drop table if exists docs;
+drop table if exists orders;
 
 
 create table "Users"(
@@ -16,7 +19,8 @@ create table products(
   price decimal(10,2) default 0.00 not null,
   description text,
   in_stock boolean,
-  created_at timestamptz default now() not null
+  created_at timestamptz default now() not null,
+  tags character varying(255)[]
 );
 
 create table docs(
@@ -25,7 +29,13 @@ create table docs(
   search tsvector
 );
 
-
+create table orders(
+  id uuid primary key default gen_random_uuid(),
+  product_id int,
+  user_id int,
+  notes character varying(255),
+  ordered_at date default now() not null
+);
 
 insert into "Users"("Email", "Name")
 values('test@test.com', 'A test user');
