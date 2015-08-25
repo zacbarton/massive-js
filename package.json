@@ -1,6 +1,6 @@
 {
   "name": "massive",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "A small query tool for Postgres that embraces json and makes life simpler",
   "main": "index.js",
   "bin": {
@@ -22,7 +22,7 @@
   "contributors": [
     "Karl Seguin <karl@openmymind.net>",
     "John Atten <xivsolutions@gmail.com>",
-    "Dian Fay <dmfay@gmail.com>"
+    "Dian Fay <dian.m.fay@gmail.com>"
   ],
   "license": "BSD",
   "dependencies": {

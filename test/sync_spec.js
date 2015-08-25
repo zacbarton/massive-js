@@ -1,13 +1,12 @@
 var assert = require("assert");
+var helpers = require("./helpers");
 var Massive = require("../index");
 var _ = require("underscore")._;
 var db;
 
 describe("Synchronous goodies", function(){
-  // fails on master too :-(
-  /*
   before(function(){
-    db = Massive.connectSync({db : "massive"});
+    db = Massive.connectSync({connectionString: helpers.connectionString});
   });
   it("loads", function(){
     assert(db);
@@ -23,5 +22,8 @@ describe("Synchronous goodies", function(){
     var product = db.products.findOneSync({id : 1});
     assert.equal(1,product.id);
   });
-  */
+  it('finds a document', function () {
+    var doc = db.docs.findDocSync(1);
+    assert.equal(1, doc.id);
+  });
 });

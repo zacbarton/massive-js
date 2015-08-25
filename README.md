@@ -43,7 +43,7 @@ var connectionString = "postgres://massive:password@localhost/chinook";
 // connect to Massive and get the db instance. You can safely use the
 // convenience sync method here because its on app load
 // you can also use loadSync - it's an alias
-massive.connectSync({connectionString : connectionString}) {
+var massiveInstance = massive.connectSync({connectionString : connectionString}) 
 
 // Set a reference to the massive instance on Express' app:
 app.set('db', massiveInstance);
@@ -209,6 +209,24 @@ db.products.find({id : [10,21]}, function(err,products){
 db.products.find({"id <>": [10,21]}, function(err,products){
   //products other than 10 and 21
 });
+
+//match a JSON field
+db.products.find({"specs->>weight": 30}, function(err, products) {
+  //products where the 'specs' field is a JSON document containing {weight: 30}
+  //note that the corresponding SQL query would be phrased specs->>'weight'; Massive adds the quotes for you
+})
+
+//match a JSON field with an IN list (note NOT IN is not supported for JSON fields at this time)
+db.products.find({"specs->>weight": [30, 35]}, function(err, products) {
+  //products where the 'specs' field is a JSON document containing {weight: 30}
+  //note that the corresponding SQL query would be phrased specs->>'weight'; Massive adds the quotes for you
+})
+
+//drill down a JSON path
+db.products.find({"specs#>>{dimensions,length}": 15}, function(err, products) {
+  //products where the 'specs' field is a JSON document having a nested 'dimensions' object containing {length: 15}
+  //note that the corresponding SQL query would be phrased specs->>'{dimensions,length}'; Massive adds the quotes for you
+})
 
 //Send in an ORDER clause by passing in a second argument
 db.products.find({},{order: "price desc"} function(err,products){
